@@ -10,6 +10,7 @@ function index()
 	page = entry({"admin", "services", "openclash"}, alias("admin", "services", "openclash", "client"), _("OpenClash"), 50)
 	page.dependent = true
 	page.acl_depends = { "luci-app-openclash" }
+	entry({"admin", "services", "openclash", "login"}, call("action_login"), _("账号登录"), 90)
 	entry({"admin", "services", "openclash", "client"},form("openclash/client"),_("Overviews"), 20).leaf = true
 	entry({"admin", "services", "openclash", "status"},call("action_status")).leaf=true
 	entry({"admin", "services", "openclash", "startlog"},call("action_start")).leaf=true
@@ -4204,4 +4205,72 @@ function delete_overwrite_file()
 
     luci.http.prepare_content("application/json")
     luci.http.write_json({status="success"})
+end
+
+
+local http = require "luci.http"
+local nixio = require "nixio"
+local json = require "luci.jsonc"
+
+function action_login()
+    local http = require "luci.http"
+    local nixio = require "nixio"
+    local json = require "luci.jsonc"
+
+    local username = http.formvalue("username")
+    local password = http.formvalue("password")
+
+    if not username or username == "" or not password or password == "" then
+        luci.template.render("openclash/login", {error = "请输入账号和密码"})
+        return
+    end
+
+    -- 登录 v2board 获取 token
+    local login_cmd = string.format(
+        [[curl -k -s -X POST https://8.134.152.191/api/v1/passport/auth/login -H "Content-Type: application/json" -H "User-Agent: Platform" -d '{"email":"%s","password":"%s"}']],
+        username, password
+    )
+    local output = io.popen(login_cmd):read("*a")
+    local ok, result = pcall(json.parse, output or "")
+
+    if not ok or not result or not result.data or not result.data.token then
+        luci.template.render("openclash/login", {error = "登录失败，或未获取到订阅 token"})
+        return
+    end
+
+    -- 获取订阅链接
+    local token = result.data.token
+    local sub_url = string.format("https://8.134.152.191/api/v1/client/subscribe?token=%s", token)
+
+    -- 生成时间戳作为配置文件名
+    local timestamp = tostring(os.time())
+    local config_file = timestamp .. ".yaml"
+    local config_path = "/etc/openclash/config/" .. config_file
+
+    -- 下载订阅配置，带 clash.meta UA
+    local fetch_cmd = string.format(
+        [[curl -s -H "User-Agent: clash.meta Platform" -o "%s" "%s"]],
+        config_path, sub_url
+    )
+    os.execute(fetch_cmd)
+
+    -- 设置当前配置文件名
+    if nixio.fs.access(config_path) then
+        os.execute(string.format("uci set openclash.config.config_name='%s'", config_file))
+        os.execute("uci commit openclash")
+
+        -- 判断是否启用 OpenClash
+        local clash_enabled = io.popen("uci get openclash.config.enable 2>/dev/null"):read("*l")
+        if clash_enabled == "0" then
+            -- 插件未启用，尝试启动
+            os.execute("/etc/init.d/openclash start &")
+        end
+
+        -- 跳转到运行面板
+        http.redirect(luci.dispatcher.build_url("admin/services/openclash"))
+    else
+        luci.template.render("openclash/login", {
+            error = "订阅拉取失败，未生成配置文件"
+        })
+    end
 end
