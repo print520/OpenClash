@@ -1,0 +1,11 @@
+<%+header%>
+<h2>登录账号</h2>
+<form method="post" action="<%=REQUEST_URI%>">
+  <p>账号：<input type="text" name="username" /></p>
+  <p>密码：<input type="password" name="password" /></p>
+  <input type="submit" value="登录" />
+</form>
+<% if error then %>
+  <p style="color: red;"><%= tostring(error or "") %></p>
+<% end %>
+<%+footer%>
