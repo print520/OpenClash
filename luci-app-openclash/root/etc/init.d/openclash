@@ -376,7 +376,7 @@ if [ -z "$RAW_CONFIG_FILE" ] || [ ! -f "$RAW_CONFIG_FILE" ]; then
          RAW_CONFIG_FILE="/etc/openclash/config/$CONFIG_NAME"
          CONFIG_FILE="/etc/openclash/$CONFIG_NAME"
          TMP_CONFIG_FILE="/tmp/yaml_config_tmp_$CONFIG_NAME"
-         LOG_OUT "Error: Config Not Found, Switch Config File to【$RAW_CONFIG_FILE】"
+         #LOG_OUT "Error: Config Not Found, Switch Config File to【$RAW_CONFIG_FILE】"
          break
       fi
    done
@@ -3435,7 +3435,19 @@ get_config()
 start_service()
 {
    enable=$(uci_get_config "enable")
-   [ "$enable" != "1" ] && LOG_OUT "Warning: OpenClash Now Disabled, Need Start From Luci Page, Exit..." && SLOG_CLEAN && exit 0
+   [ "$enable" != "1" ] && LOG_OUT "Warning: OpenClash Now Disabled, Need Start From Luci Page, Exit..." && SLOG_CLEAN && exit 0	# 自动设置配置文件
+	if [ -z "$(uci get openclash.config.config_name 2>/dev/null)" ]; then
+	   yaml_file=$(find /etc/openclash/config /etc/openclash -maxdepth 1 -type f -name "*.yaml" | head -n 1)
+	   if [ -n "$yaml_file" ]; then
+	      yaml_basename=$(basename "$yaml_file")
+	      uci set openclash.config.config_name="$yaml_basename"
+	      uci commit openclash
+	      echo "自动设置配置文件: $yaml_basename"
+	   else
+	      echo "未找到任何 YAML 配置文件，终止启动 OpenClash"
+	      exit 0
+	   fi
+	fi
 
    LOG_OUT "OpenClash Start Running..."
 
