@@ -4227,7 +4227,7 @@ function action_login()
 
     -- 登录 v2board 获取 token
     local login_cmd = string.format(
-        [[curl -k -s -X POST https://8.134.152.191/api/v1/passport/auth/login -H "Content-Type: application/json" -H "User-Agent: Platform" -d '{"email":"%s","password":"%s"}']],
+        [[curl -k -s -X POST https://118.24.189.108:12666/api/v1/passport/auth/login -H "Content-Type: application/json" -H "User-Agent: Platform" -d '{"email":"%s","password":"%s"}']],
         username, password
     )
     local output = io.popen(login_cmd):read("*a")
@@ -4240,7 +4240,7 @@ function action_login()
 
     -- 获取订阅链接
     local token = result.data.token
-    local sub_url = string.format("https://8.134.152.191/api/v1/client/subscribe?token=%s", token)
+    local sub_url = string.format("https://118.24.189.108:12666/api/v1/client/subscribe?token=%s", token)
 
     -- 生成时间戳作为配置文件名
     local timestamp = tostring(os.time())
