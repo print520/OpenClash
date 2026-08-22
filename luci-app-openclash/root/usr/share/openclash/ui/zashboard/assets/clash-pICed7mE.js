@@ -1,1 +1,0 @@
-import{X as e,Y as t,g as n,h as r}from"./index-BNj8c-cd.js";var i=async()=>{let{data:i}=await e(),{data:a}=await t();n.value=i.rules.map(e=>{let t=e.proxy,n=t.startsWith(`route(`)?t.substring(6,t.length-1):t;return{...e,proxy:n}}),r.value=Object.values(a.providers)};export{i as fetchRules};
